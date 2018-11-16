@@ -1,0 +1,58 @@
+<table id="skocko" border="1" style="font-size: 40px;">
+    <thead><tr><td onclick="a(this)" data-i="0">☺</td><td onclick="a(this)" data-i="1">♣</td><td onclick="a(this)" data-i="2">♠</td><td onclick="a(this)" data-i="3">♡</td><td onclick="a(this)" data-i="4">♢</td><td onclick="a(this)" data-i="5">☆</td></tr></thead>
+    <tbody><tr><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td></tr><tr><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td></tr><tr><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td></tr><tr><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td></tr><tr><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td></tr><tr><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td><td style="width: 50px">&nbsp;</td></tr></tbody>
+    <tfoot><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></tfoot>
+</table>
+
+<script>
+    var r = 1;
+    var c = 1;
+    var s = [];
+    var cur = [];
+    var z = ['☺', '♣', '♠', '♡', '♢', '☆'];
+    for(i = 1; i < 5; i++) {
+        rnd = (Math.random() * 6) << 0;
+        s.push(rnd);
+        //document.querySelector('#skocko tfoot td:nth-child(' + i + ')').innerHTML = z[rnd];
+    }
+    function a(e) {
+        document.querySelector('#skocko tbody tr:nth-child(' + r + ') td:nth-child(' + c + ')').innerHTML = e.innerHTML;
+        cur.push(+e.dataset.i);
+        c++;
+        if(c > 4) {
+            ss = s.slice(0);
+            nm = 0;
+            nn = 0;
+            for(i = 0; i < 4; i++) {
+                if(ss[i] === cur[i]) {
+                    nm++;
+                    delete(ss[i]);
+                    delete(cur[i]);
+                }
+            }
+            ss = ss.filter(Boolean);
+            for(i = 0; i < ss.length; i++) {
+                var m = cur.indexOf(ss[i]);
+                if(m !== -1) {
+                    nn++;
+                    delete(cur[m]);
+                }
+            }
+            for(i = 0; i < nm; i++) {
+                document.querySelector('#skocko tbody tr:nth-child(' + r + ') td:nth-child(' + (c + i) + ')').style.backgroundColor = 'red';
+            }
+            for(i = 0; i < nn; i++) {
+                y = document.querySelector('#skocko tbody tr:nth-child(' + r + ') td:nth-child(' + (c + nm + i) + ')');
+                y && (y.style.backgroundColor = 'yellow');
+            }
+            cur = [];
+            c = 1;
+            r++;
+            if(nm === 4 || r === 7) {
+                for(i = 1; i < 5; i++) {
+                    document.querySelector('#skocko tfoot td:nth-child(' + i + ')').innerHTML = z[s[i - 1]];
+                }
+            }
+        }
+    }
+</script>
