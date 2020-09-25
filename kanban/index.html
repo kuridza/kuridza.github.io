@@ -1,1 +1,266 @@
-.
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <style>
+        .active {background: #ddd;}
+        table {width: 100%;}
+        table td {width: 20%;vertical-align: top;}
+        .task {border: 1px solid gray; margin: 4px; padding: 4px;}
+        .new {background: #8d8;}
+    </style>
+</head>
+<body>
+<table>
+    <tr>
+        <th v-for="(column, i) in columns">
+            <span v-on:click="editColumn($event, i, column.name)">{{ column.name }}</span>
+            <button v-on:click="showForm(i, -1, $event)">+</button>
+            <button v-on:click="clearColumn(i)">clear</button>
+            <button v-on:click="deleteColumn(i)">x</button>
+        </th>
+        <th>
+            <button v-if="false && columns.length" v-on:click="toggle">+Task</button>
+            <button v-on:click="addColumn">+Column</button>
+        </th>
+    </tr>
+    <tr>
+        <td v-for="(column, ci) in columns">
+            <div :class="{ 'active': activeIndex === ci + '-' + ti }" class="task" v-on:click="showForm(ci, ti, $event)" v-for="(task, ti) in column.tasks">
+                <span v-for="tag in task[3]" v-bind:style="{ background: '#' + stringToColour(tag), color: '#' + inverseColor(tag)}">
+                    {{tag}}
+                </span><br>
+                <h3 data-title>{{task[1]}}</h3>
+                <button v-if="ci > 0" v-on:click.stop="setTaskColum(ti, ci, ci - 1)"><</button>
+                <small v-bind:style="{ background: '#' + stringToColour(task[0]), color: '#' + inverseColor(task[0])}">
+                    {{task[0]}}
+                </small>
+                <button v-if="ci < columns.length - 1" v-on:click.stop="setTaskColum(ti, ci, ci + 1)">></button>
+            </div>
+        </td>
+        <td v-show="form.active" :class="form.class">
+            <input v-model="form.title" placeholder="Title"><br>
+            <select v-model="form.column">
+                <option v-for="(column, i) in columns" v-bind:value="i">
+                    {{ column.name }}
+                </option>
+            </select>
+            <select v-model="form.user">
+                <option v-for="(user, i) in users" v-bind:value="i">
+                    {{ user }}
+                </option>
+            </select><br>
+            <input v-model="form.tags" placeholder="Tags, comma separated"><br>
+            <textarea v-model="form.description" placeholder="Description"></textarea><br>
+            <input type="file" @change="previewFiles" multiple>
+            <canvas v-show="form.canvas"></canvas>
+            <button v-on:click="toggle">cancel</button><br>
+            <button v-on:click="saveTask(form.column, form.task)">save</button>
+            <button v-on:click="deleteTask(form.column, form.task)">delete</button>
+        </td>
+        <td id="log" v-show="!form.active"><pre></pre></td>
+    </tr>
+</table>
+
+<script>
+
+    var columns = localStorage.getItem('columns');
+    columns = JSON.parse(columns) || [];
+
+    var kanban = new Vue({
+        el: 'table',
+        data: {
+            users: ['John Doe', 'Richard Roe', 'Jane Roe'],
+            columns: columns,
+            activeIndex: '',
+            form: {
+                title: '',
+                description: '',
+                active: false,
+                class: 'active',
+                previousColumn: -1,
+                column: -1,
+                task: -1,
+                user: -1,
+                tags: [],
+                canvas: null
+            },
+        },
+        methods: {
+            saveTask: function() {
+                var tags = typeof this.form.tags === 'string' ? this.form.tags.split(',') : this.form.tags;
+                var image = null;
+                if(this.form.canvas) {
+                    image = this.form.canvas.toDataURL('image/png');
+                }
+                var task = [this.users[this.form.user], this.form.title, this.form.description, tags, image];
+                var action = 'Edited';
+                if(this.form.task === -1) {
+                    action = 'Added';
+                    this.columns[this.form.column].tasks.push(task);
+                } else if(this.form.column === this.form.previousColumn) {
+                    this.columns[this.form.column].tasks[this.form.task] = task;
+                } else {
+                    var column = this.columns[this.form.previousColumn];
+                    column.tasks.splice(this.form.task, 1);
+                    this.columns[this.form.previousColumn] = column;
+
+                    this.columns[this.form.column].tasks.push(task);
+                }
+                this.save(`${action} task ${this.form.title}`);
+                this.toggle();
+            },
+            toggle: function() {
+                this.form.title = '';
+                this.form.description = '';
+                this.form.column = 0;
+                this.form.task = -1;
+                this.form.user = -1;
+                this.form.tags = [];
+                this.form.canvas = null;
+                this.form.active = !this.form.active;
+                if(!this.form.active) {
+                    this.activeIndex = '';
+                }
+            },
+            showForm: function(ci, ti, e) {
+                this.activeIndex = ci + '-' + ti;
+                this.form.active = true;
+                if(ti > -1) {
+                    this.form.class = 'active';
+                    this.form.user = this.users.indexOf(this.columns[ci].tasks[ti][0]);
+                    this.form.title = this.columns[ci].tasks[ti][1];
+                    this.form.description = this.columns[ci].tasks[ti][2];
+                    this.form.tags = this.columns[ci].tasks[ti][3];
+                    this.form.task = ti;
+                    if(this.columns[ci].tasks[ti][4]) {
+                        var canvas = this.$el.querySelector('canvas');
+                        var ctx = canvas.getContext("2d");
+
+                        var image = new Image();
+                        image.onload = function() {
+                            ctx.drawImage(image, 0, 0);
+                        };
+                        image.src = this.columns[ci].tasks[ti][4]
+                        this.form.canvas = canvas;
+                    } else {
+                        this.form.canvas = null;
+                    }
+                } else {
+                    this.form.class = 'new';
+                    this.form.title = '';
+                    this.form.description = '';
+                    this.form.column = 0;
+                    this.form.task = -1;
+                    this.form.user = -1;
+                    this.form.tags = [];
+                    this.form.canvas = null;
+                }
+                this.form.column = ci;
+                this.form.previousColumn = ci;
+            },
+            setTaskColum: function(ti, ci, i) {
+                var task = this.columns[ci].tasks[ti];
+                var column = this.columns[ci];
+                column.tasks.splice(ti, 1);
+                this.columns[ci] = column;
+
+                this.columns[i].tasks.push(task);
+                this.save(`${task[1]} moved to ${this.columns[i].name}`);
+                this.form.active = false;
+                this.activeIndex = i + '-' + (this.columns[i].tasks.length - 1);
+            },
+            deleteTask: function(ci, ti) {
+                if(! confirm('R u sure?')) return;
+                var column = this.columns[ci];
+                column.tasks.splice(ti, 1);
+                this.columns[ci] = column;
+                this.save(`Deleted task ${this.form.title}`);
+                this.toggle();
+            },
+            addColumn: function() {
+                var name = prompt('Column name');
+                if(name) {
+                    this.columns.push({name:name , tasks: []});
+                    this.save(`Added column ${name}`);
+                }
+            },
+            editColumn: function(e, i, oldName) {
+                var name = prompt('Column name', oldName);
+                if(name) {
+                    this.columns[i].name = name;
+                    this.save(`Renamed column ${name}`);
+                }
+            },
+            deleteColumn: function(i) {
+                if(! confirm('R u sure?')) return;
+                this.columns.splice(i, 1);
+                this.save(`Deleted column`);
+            },
+            clearColumn: function(i) {
+                if(! confirm('R u sure?')) return;
+                this.columns[i].tasks = [];
+                this.save(`Cleared column`);
+            },
+            save: function(message) {
+                var log = this.$el.querySelector('#log pre');
+                log.innerHTML = `\n [${new Date().toLocaleTimeString()}] ${message} \n ${log.innerHTML}`;
+                localStorage.setItem('columns', JSON.stringify(this.columns));
+            },
+            previewFiles(e) {
+                var canvas = this.$el.querySelector('canvas');
+                this.form.canvas = canvas;
+                var ctx = canvas.getContext("2d");
+                var img = new Image();
+                var image = URL.createObjectURL(e.currentTarget.files[0]);
+                img.onload = function () {
+
+                    // set size proportional to image
+                    canvas.height = canvas.width * (img.height / img.width);
+
+                    // step 1 - resize to 50%
+                    var oc = document.createElement('canvas'),
+                        octx = oc.getContext('2d');
+
+                    oc.width = img.width * 0.5;
+                    oc.height = img.height * 0.5;
+                    octx.drawImage(img, 0, 0, oc.width, oc.height);
+
+                    // step 2
+                    octx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5);
+
+                    // step 3, resize to final size
+                    ctx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5,
+                        0, 0, canvas.width, canvas.height);
+                }
+                img.src = image;
+            },
+            stringToColour: function(str) {
+                if(!str) return;
+                var hash = 0;
+                for (var i = 0; i < str.length; i++) {
+                    hash = str.charCodeAt(i) + ((hash << 10) - hash);
+                }
+                hash *= 100;
+                var colour = '';
+                for (var i = 0; i < 3; i++) {
+                    var value = (hash >> (i * 8)) & 0xFF;
+                    colour += ('00' + value.toString(16)).substr(-2);
+                }
+                return colour;
+            },
+            inverseColor: function invertHex(str) {
+                if(!str) return;
+                var hex = this.stringToColour(str);
+                var r = parseInt(hex.slice(0, 2), 16),
+                    g = parseInt(hex.slice(2, 4), 16),
+                    b = parseInt(hex.slice(4, 6), 16);
+                return (r * 0.299 + g * 0.587 + b * 0.114) > 160
+                    ? '000000'
+                    : 'FFFFFF';
+            }
+        }
+    });
+
+</script>
+</body>
+</html>
